@@ -1,22 +1,84 @@
 import groovy.json.JsonSlurper
 
-task buildChangelog(type:Exec) {
+task buildChangelog {
+  def fileContents = ""
+  def stringsFile = new File("./pullRequestList.txt")
 
-  executable 'curl'
-  args 'https://api.github.com/repos/openhab/openhab2-addons/pulls?state=all'
+  def pageNumber = 1
 
-  standardOutput = new ByteArrayOutputStream()
+  def orgName = 'openhab'
+  def openHABMilestone = '2.1'
+  def legacyMilestone = '1.10.0'
 
-  doLast {
-    def jsonSluper = new JsonSlurper()
-    def pullRequests = jsonSluper.parseText(standardOutput.toString())
-    def stringsFile = new File("./response.xml")
-    def fileContents = ""
+  def repos = [
+    [
+      'name': "openhab2-addons",
+      'milestone': "${openHABMilestone}",
+      'description': '2.x Addons',
+      'types': [ 
+        [
+          'name':'newbinding',
+          'description':"The following add-ons are newly introduced with the ${openHABMilestone} release:"
+        ],[
+          'name':'bug',
+          'description':'Bug fixes on exisiting 2.x addons'
+        ],[
+          'name':'enhancement',
+          'description':'Enhancements on existing 2.x addons'
+        ]
+      ]
+    ],[
+      'name': "openhab1-addons",
+      'description': '1.x Addons',
+      'milestone': "${legacyMilestone}",
+      'types': [
+        [
+          'name':'bug',
+          'description':'Bug fixes on exisiting 1.x addons'
+        ],[
+          'name':'enhancement',
+          'description':'Enhancements on existing 1.x addons'
+        ]
+      ]
+    ]
+  ]
 
-    pullRequests.each { pullRequest ->
-      fileContents = pullRequest.title + "\n" + fileContents
+  repos.each { repo ->
+
+    def repoName = repo.name
+    def milestone = repo.milestone
+  
+    fileContents = fileContents + "## ${repo.description}\n\n"
+  
+    repo.types.each { type ->
+
+      def pullType = type.name
+
+      fileContents = fileContents + "### ${type.description}\n\n"
+  
+      def curlOutput = new ByteArrayOutputStream()
+
+      exec {
+        commandLine 'curl', "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr%20is:merged%20label:${pullType}%20milestone:%22${milestone}%22&per_page=100"
+        standardOutput = curlOutput;
+      }
+      
+      def jsonSluper = new JsonSlurper()
+      def searchResults = jsonSluper.parseText(curlOutput.toString())
+      def pullRequests = searchResults.items
+
+      pullRequests.each { pullRequest ->
+
+        def pullTitle = pullRequest.title
+        def pullAuthor =  pullRequest.user.login
+        def pullNumber = pullRequest.number
+
+        fileContents = fileContents + "#${pullNumber} - ${pullTitle} (@${pullAuthor})\n"
+      }
+      fileContents = fileContents + "\n"
     }
-
-    stringsFile.text = fileContents.toString()
   }
+  stringsFile.text = fileContents
 }
+
+
