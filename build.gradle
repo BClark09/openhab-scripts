@@ -2,7 +2,7 @@ import groovy.json.JsonSlurper
 
 task buildChangelog {
   def fileContents = ""
-  def stringsFile = new File("./pullRequestList.txt")
+  def stringsFile = new File("./build/changelog.md")
 
   def pageNumber = 1
 
@@ -20,11 +20,11 @@ task buildChangelog {
           'name':'newbinding',
           'description':"The following add-ons are newly introduced with the ${openHABMilestone} release:"
         ],[
-          'name':'bug',
-          'description':'Bug fixes on exisiting 2.x addons'
-        ],[
           'name':'enhancement',
           'description':'Enhancements on existing 2.x addons'
+        ],[
+          'name':'bug',
+          'description':'Bug fixes on exisiting 2.x addons'
         ]
       ]
     ],[
@@ -33,11 +33,11 @@ task buildChangelog {
       'milestone': "${legacyMilestone}",
       'types': [
         [
-          'name':'bug',
-          'description':'Bug fixes on exisiting 1.x addons'
-        ],[
           'name':'enhancement',
           'description':'Enhancements on existing 1.x addons'
+        ],[
+          'name':'bug',
+          'description':'Bug fixes on exisiting 1.x addons'
         ]
       ]
     ]
@@ -80,5 +80,3 @@ task buildChangelog {
   }
   stringsFile.text = fileContents
 }
-
-
