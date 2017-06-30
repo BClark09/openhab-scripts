@@ -1,0 +1,22 @@
+import groovy.json.JsonSlurper
+
+task buildChangelog(type:Exec) {
+
+  executable 'curl'
+  args 'https://api.github.com/repos/openhab/openhab2-addons/pulls?state=all'
+
+  standardOutput = new ByteArrayOutputStream()
+
+  doLast {
+    def jsonSluper = new JsonSlurper()
+    def pullRequests = jsonSluper.parseText(standardOutput.toString())
+    def stringsFile = new File("./response.xml")
+    def fileContents = ""
+
+    pullRequests.each { pullRequest ->
+      fileContents = pullRequest.title + "\n" + fileContents
+    }
+
+    stringsFile.text = fileContents.toString()
+  }
+}
