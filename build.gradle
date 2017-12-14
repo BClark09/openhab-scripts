@@ -1,4 +1,6 @@
 import groovy.json.JsonSlurper
+import java.util.regex.Pattern
+import java.util.regex.Matcher
 
 task buildChangelog {
   def fileContents = ""
@@ -7,8 +9,8 @@ task buildChangelog {
   def pageNumber = 1
 
   def orgName = 'openhab'
-  def openHABMilestone = '2.1'
-  def legacyMilestone = '1.10.0'
+  def openHABMilestone = '2.2'
+  def legacyMilestone = '1.11.0'
 
   def repos = [
     [
@@ -54,7 +56,7 @@ task buildChangelog {
 
       def pullType = type.name
 
-      fileContents = fileContents + "### ${type.description}\n\n"
+      fileContents = fileContents + "###${type.description}\n\n"
   
       def curlOutput = new ByteArrayOutputStream()
 
@@ -66,12 +68,27 @@ task buildChangelog {
       def jsonSluper = new JsonSlurper()
       def searchResults = jsonSluper.parseText(curlOutput.toString())
       def pullRequests = searchResults.items
+      def sortedRequests = pullRequests.sort { it.title.toLowerCase() }
 
-      pullRequests.each { pullRequest ->
+      def prevBinding = ""
+
+      sortedRequests.each { pullRequest ->
 
         def pullTitle = pullRequest.title
         def pullAuthor =  pullRequest.user.login
         def pullNumber = pullRequest.number
+
+        Pattern pattern = Pattern.compile("\\[(.*?)\\](.*)")
+        Matcher matcher = pattern.matcher(pullTitle)
+
+        if (matcher.find()) {
+          def bindingName = matcher.group(1)
+          if (bindingName != prevBinding) {
+            fileContents = fileContents + "\n #### ${bindingName}\n\n"
+            prevBinding = bindingName
+          }
+          pullTitle = matcher.group(2)
+        }
 
         fileContents = fileContents + "#${pullNumber} - ${pullTitle} (@${pullAuthor})\n"
       }
