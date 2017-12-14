@@ -56,7 +56,7 @@ task buildChangelog {
 
       def pullType = type.name
 
-      fileContents = fileContents + "###${type.description}\n\n"
+      fileContents = fileContents + "### ${type.description}\n\n"
   
       def curlOutput = new ByteArrayOutputStream()
 
@@ -77,6 +77,7 @@ task buildChangelog {
         def pullTitle = pullRequest.title
         def pullAuthor =  pullRequest.user.login
         def pullNumber = pullRequest.number
+        def pullURL = pullRequest.url
 
         Pattern pattern = Pattern.compile("\\[(.*?)\\](.*)")
         Matcher matcher = pattern.matcher(pullTitle)
@@ -84,13 +85,13 @@ task buildChangelog {
         if (matcher.find()) {
           def bindingName = matcher.group(1)
           if (bindingName != prevBinding) {
-            fileContents = fileContents + "\n #### ${bindingName}\n\n"
+            fileContents = fileContents + "\n#### ${bindingName}\n\n"
             prevBinding = bindingName
           }
           pullTitle = matcher.group(2)
         }
 
-        fileContents = fileContents + "#${pullNumber} - ${pullTitle} (@${pullAuthor})\n"
+        fileContents = fileContents + " - #[${pullNumber}](${pullURL}) - ${pullTitle} (@${pullAuthor})\n"
       }
       fileContents = fileContents + "\n"
     }
