@@ -92,7 +92,7 @@ task buildChangelog {
           prevType = pullType
         }
       }
-      if (!skipPR) fileContents = fileContents + " - [(#${pullNumber})](${pullURL}) - ${pullTitle} (@${pullAuthor})\n"
+      if (!skipPR) fileContents = fileContents + " - [#${pullNumber}](${pullURL}) - ${pullTitle} (@${pullAuthor})\n"
     }
   }
   stringsFile.text = fileContents
