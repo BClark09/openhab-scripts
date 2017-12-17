@@ -14,13 +14,35 @@ task buildChangelog {
 
   def repos = [
     [
-      'name': "openhab2-addons",
+      'name': "org.openhab.ui.habmin",
+      'description': 'HABmin',
       'milestone': "${openHABMilestone}",
+      'multibinding': false
+    ],[
+      'name': "org.openhab.ui.habpanel",
+      'description': 'HABPanel',
+      'milestone': "${openHABMilestone}",
+      'multibinding': false
+    ],[
+      'name': "org.openhab.binding.zigbee",
+      'description': 'Zigbee',
+      'milestone': "${openHABMilestone}",
+      'multibinding': false
+    ],[
+      'name': "org.openhab.binding.zwave",
+      'description': 'zwave',
+      'milestone': "${openHABMilestone}",
+      'multibinding': false
+    ],[
+      'name': "openhab2-addons",
       'description': '2.x Addons',
+      'milestone': "${openHABMilestone}",
+      'multibinding': true
     ],[
       'name': "openhab1-addons",
       'description': '1.x Addons',
       'milestone': "${legacyMilestone}",
+      'multibinding': true
     ]
   ]
 
@@ -29,6 +51,7 @@ task buildChangelog {
     def repoName = repo.name
     def milestone = repo.milestone
     def repoDesc = repo.description
+    def multibinding = repo.multibinding
     fileContents = fileContents + "\n### ${repoDesc}\n"
 
     def curlOutput = new ByteArrayOutputStream()
@@ -64,12 +87,12 @@ task buildChangelog {
         pullBinding = matcher.group(1)
         pullTitle = matcher.group(2)
       }
-
-      if (pullBinding != prevBinding) {
+      if ((multibinding) && (pullBinding != prevBinding)) {
         fileContents = fileContents + "\n#### ${pullBinding}\n"
         prevBinding = pullBinding
         prevType = ""
       }
+
       def skipPR = false
       if (pullType != prevType) {
         def formatedType = pullType
