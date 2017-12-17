@@ -52,7 +52,8 @@ task buildChangelog {
     def milestone = repo.milestone
     def repoDesc = repo.description
     def multibinding = repo.multibinding
-    fileContents = fileContents + "\n### ${repoDesc}\n"
+
+    def firstPull = true
 
     def curlOutput = new ByteArrayOutputStream()
     exec {
@@ -69,6 +70,11 @@ task buildChangelog {
     def prevType = ""
 
     sortedByName.each { pullRequest ->
+
+      if (firstPull) {
+        fileContents = fileContents + "\n### ${repoDesc}\n"
+        firstPull = false
+      }
 
       def pullTitle = pullRequest.title
       def pullAuthor =  pullRequest.user.login
@@ -109,13 +115,16 @@ task buildChangelog {
           case "newbinding":
             skipPR = true
             break
+          default:
+            skipPR = true
+            break
         } 
         if (!skipPR) {
           fileContents = fileContents + "\n##### ${formatedType}\n\n"
           prevType = pullType
         }
       }
-      if (!skipPR) fileContents = fileContents + " - [#${pullNumber}](${pullURL}) - ${pullTitle} (@${pullAuthor})\n"
+      if (!skipPR) fileContents = fileContents + " - [#${pullNumber}](${pullURL}) - ${pullTitle}\n"
     }
   }
   stringsFile.text = fileContents
