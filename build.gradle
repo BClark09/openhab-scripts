@@ -9,8 +9,8 @@ task buildChangelog {
   def pageNumber = 1
 
   def orgName = 'openhab'
-  def openHABMilestone = '2.2'
-  def legacyMilestone = '1.11.0'
+  def openHABMilestone = '2.3'
+  def legacyMilestone = '1.12.0'
 
   def repos = [
     [
@@ -30,7 +30,7 @@ task buildChangelog {
       'multibinding': false
     ],[
       'name': "org.openhab.binding.zwave",
-      'description': 'zwave',
+      'description': 'ZWave',
       'milestone': "${openHABMilestone}",
       'multibinding': false
     ],[
@@ -68,6 +68,7 @@ task buildChangelog {
     def sortedByName = sortedByType.sort { it.title.toLowerCase() }
     def prevBinding = ""
     def prevType = ""
+    def firstAddonPR = false
 
     sortedByName.each { pullRequest ->
 
@@ -82,6 +83,7 @@ task buildChangelog {
       def pullURL = pullRequest.html_url
       def pullType = pullRequest.labels[0]?.name
 
+
       if (pullType == null) { pullType = "Other" }
 
       def pullBinding = "Misc"
@@ -93,8 +95,8 @@ task buildChangelog {
         pullBinding = matcher.group(1)
         pullTitle = matcher.group(2)
       }
-      if ((multibinding) && (pullBinding != prevBinding)) {
-        fileContents = fileContents + "\n#### ${pullBinding}\n"
+      if ((multibinding) && (pullBinding.toLowerCase() != prevBinding.toLowerCase())) {
+        firstAddonPR = true
         prevBinding = pullBinding
         prevType = ""
       }
@@ -118,10 +120,12 @@ task buildChangelog {
           default:
             skipPR = true
             break
-        } 
+        }
         if (!skipPR) {
+          if (firstAddonPR) {fileContents = fileContents + "\n#### ${pullBinding}\n"}
           fileContents = fileContents + "\n##### ${formatedType}\n\n"
           prevType = pullType
+          firstAddonPR=false
         }
       }
       if (!skipPR) fileContents = fileContents + " - [#${pullNumber}](${pullURL}) - ${pullTitle}\n"
