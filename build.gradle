@@ -3,7 +3,8 @@ import java.util.regex.Pattern
 import java.util.regex.Matcher
 
 task buildChangelog {
-  def fileContents = ""
+  def changesList = ""
+  def newBindingList = ""
   def stringsFile = new File("./build/changelog.md")
 
   def pageNumber = 1
@@ -24,6 +25,11 @@ task buildChangelog {
       'milestone': "${openHABMilestone}",
       'multibinding': false
     ],[
+      'name': "openhab2-addons",
+      'description': '2.x Addons',
+      'milestone': "${openHABMilestone}",
+      'multibinding': true
+    ],[
       'name': "org.openhab.binding.zigbee",
       'description': 'Zigbee',
       'milestone': "${openHABMilestone}",
@@ -33,11 +39,6 @@ task buildChangelog {
       'description': 'ZWave',
       'milestone': "${openHABMilestone}",
       'multibinding': false
-    ],[
-      'name': "openhab2-addons",
-      'description': '2.x Addons',
-      'milestone': "${openHABMilestone}",
-      'multibinding': true
     ],[
       'name': "openhab1-addons",
       'description': '1.x Addons',
@@ -54,6 +55,7 @@ task buildChangelog {
     def multibinding = repo.multibinding
 
     def firstPull = true
+    if (!multibinding) firstPull = false
 
     def curlOutput = new ByteArrayOutputStream()
     exec {
@@ -72,17 +74,19 @@ task buildChangelog {
 
     sortedByName.each { pullRequest ->
 
-      if (firstPull) {
-        fileContents = fileContents + "\n### ${repoDesc}\n"
-        firstPull = false
-      }
-
       def pullTitle = pullRequest.title
       def pullAuthor =  pullRequest.user.login
       def pullNumber = pullRequest.number
       def pullURL = pullRequest.html_url
       def pullType = pullRequest.labels[0]?.name
 
+
+      if (firstPull) {
+        changesList = changesList + "\n### ${repoDesc}\n\n"
+        changesList = changesList + "| Binding | Type | Issue# | Change |\n"
+        changesList = changesList + "|-|-|-|-|\n"
+        firstPull = false
+      }
 
       if (pullType == null) { pullType = "Other" }
 
@@ -95,7 +99,9 @@ task buildChangelog {
         pullBinding = matcher.group(1)
         pullTitle = matcher.group(2)
       }
-      if ((multibinding) && (pullBinding.toLowerCase() != prevBinding.toLowerCase())) {
+      if (!multibinding) pullBinding = repoDesc
+
+      if (pullBinding.toLowerCase() != prevBinding.toLowerCase()) {
         firstAddonPR = true
         prevBinding = pullBinding
         prevType = ""
@@ -116,20 +122,33 @@ task buildChangelog {
             break
           case "newbinding":
             skipPR = true
+            newBindingList = newBindingList + " - ${pullBinding}\n"
             break
           default:
             skipPR = true
             break
         }
         if (!skipPR) {
-          if (firstAddonPR) {fileContents = fileContents + "\n#### ${pullBinding}\n"}
-          fileContents = fileContents + "\n##### ${formatedType}\n\n"
+          if (firstAddonPR) {
+            changesList = changesList + "| | | | |\n"
+            changesList = changesList + "| **${pullBinding}** | *${formatedType}* "
+          } else {
+            changesList = changesList + "| | *${formatedType}* "
+          }
           prevType = pullType
           firstAddonPR=false
         }
+      } else {
+        changesList = changesList + "| | "
       }
-      if (!skipPR) fileContents = fileContents + " - [#${pullNumber}](${pullURL}) - ${pullTitle}\n"
+      if (!skipPR) changesList = changesList + "| [#${pullNumber}](${pullURL}) | ${pullTitle} |\n"
     }
   }
-  stringsFile.text = fileContents
+  def outputText = "### New Addons\n\n"
+  outputText = outputText + "The following add-ons are newly introduced with the ${openHABMilestone} release:\n\n"
+  outputText = outputText + "${newBindingList}\n"
+
+  outputText = outputText + "The following changes were done on existing addons:\n\n"
+  outputText = outputText + "${changesList}"
+  stringsFile.text = outputText
 }
