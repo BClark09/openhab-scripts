@@ -15,35 +15,45 @@ task buildChangelog {
 
   def repos = [
     [
-      'name': "org.openhab.ui.habmin",
-      'description': 'HABmin',
+      'name': "openhab-distro",
+      'description': 'Distribution',
       'milestone': "${openHABMilestone}",
-      'multibinding': false
+      'newCatagory': true
     ],[
-      'name': "org.openhab.ui.habpanel",
-      'description': 'HABPanel',
+      'name': "openhab-core",
+      'description': '2.x Core',
       'milestone': "${openHABMilestone}",
-      'multibinding': false
+      'newCatagory': true
     ],[
       'name': "openhab2-addons",
       'description': '2.x Addons',
       'milestone': "${openHABMilestone}",
-      'multibinding': true
+      'newCatagory': true
+    ],[
+      'name': "org.openhab.ui.habmin",
+      'description': 'HABmin',
+      'milestone': "${openHABMilestone}",
+      'newCatagory': false
+    ],[
+      'name': "org.openhab.ui.habpanel",
+      'description': 'HABPanel',
+      'milestone': "${openHABMilestone}",
+      'newCatagory': false
     ],[
       'name': "org.openhab.binding.zigbee",
       'description': 'Zigbee',
       'milestone': "${openHABMilestone}",
-      'multibinding': false
+      'newCatagory': false
     ],[
       'name': "org.openhab.binding.zwave",
       'description': 'ZWave',
       'milestone': "${openHABMilestone}",
-      'multibinding': false
+      'newCatagory': false
     ],[
       'name': "openhab1-addons",
       'description': '1.x Addons',
       'milestone': "${legacyMilestone}",
-      'multibinding': true
+      'newCatagory': true
     ]
   ]
 
@@ -52,10 +62,13 @@ task buildChangelog {
     def repoName = repo.name
     def milestone = repo.milestone
     def repoDesc = repo.description
-    def multibinding = repo.multibinding
+    def newCatagory = repo.newCatagory
 
-    def firstPull = true
-    if (!multibinding) firstPull = false
+    if (newCatagory) {
+      changesList = changesList + "\n### ${repoDesc}\n\n"
+        changesList = changesList + "| Binding | Type | Issue# | Change |\n"
+        changesList = changesList + "|-|-|-|-|\n"
+    }
 
     def curlOutput = new ByteArrayOutputStream()
     exec {
@@ -66,11 +79,10 @@ task buildChangelog {
     def jsonSlurper = new JsonSlurper()
     def searchResults = jsonSlurper.parseText(curlOutput.toString())
     def pullRequests = searchResults.items
-    def sortedByType = pullRequests.sort { it.labels[0]?.name }
-    def sortedByName = sortedByType.sort { it.title.toLowerCase() }
+    def sortedByName = pullRequests.sort { it.title.toLowerCase() }
     def prevBinding = ""
-    def prevType = ""
-    def firstAddonPR = false
+    def enhancementList = ""
+    def bugfixList = ""
 
     sortedByName.each { pullRequest ->
 
@@ -79,16 +91,7 @@ task buildChangelog {
       def pullNumber = pullRequest.number
       def pullURL = pullRequest.html_url
       def pullType = pullRequest.labels[0]?.name
-
-
-      if (firstPull) {
-        changesList = changesList + "\n### ${repoDesc}\n\n"
-        changesList = changesList + "| Binding | Type | Issue# | Change |\n"
-        changesList = changesList + "|-|-|-|-|\n"
-        firstPull = false
-      }
-
-      if (pullType == null) { pullType = "Other" }
+      if (pullType == null) { pullType = "enhancement" }
 
       def pullBinding = "Misc"
 
@@ -99,56 +102,68 @@ task buildChangelog {
         pullBinding = matcher.group(1)
         pullTitle = matcher.group(2)
       }
-      if (!multibinding) pullBinding = repoDesc
+      if (!newCatagory) pullBinding = repoDesc
 
       if (pullBinding.toLowerCase() != prevBinding.toLowerCase()) {
-        firstAddonPR = true
+        def bugfixOnly = enhancementList.isEmpty()
+        enhancementList.eachLine { line, count ->
+          if (count == 0) {
+            changesList = changesList + "| | | | |\n"
+            changesList = changesList + "| **${prevBinding}** | *Enhancements* | ${line} |\n"
+          }
+          else changesList = changesList + "| | | ${line} |\n"
+        }
+        bugfixList.eachLine { line, count ->
+          if (count == 0) {
+            if (bugfixOnly) {
+              changesList = changesList + "| | | | |\n"
+              changesList = changesList + "| **${prevBinding}** | *Bug Fixes* | ${line} |\n"
+          }
+            else changesList = changesList + "| | *Bug Fixes* | ${line} |\n"
+          }
+          else changesList = changesList + "| | | ${line} |\n"
+        }
         prevBinding = pullBinding
-        prevType = ""
+        bugfixList = ""
+        enhancementList = ""
       }
 
-      def skipPR = false
-      if (pullType != prevType) {
-        def formatedType = pullType
-        switch(pullType) {
-          case "enhancement":
-            formatedType = "Enhancements"
-            break
-          case "bug":
-            formatedType = "Bug Fixes"
-            break
-          case "documentation":
-            skipPR = true
-            break
-          case "newbinding":
-            skipPR = true
-            newBindingList = newBindingList + " - ${pullBinding}\n"
-            break
-          default:
-            skipPR = true
-            break
-        }
-        if (!skipPR) {
-          if (firstAddonPR) {
-            changesList = changesList + "| | | | |\n"
-            changesList = changesList + "| **${pullBinding}** | *${formatedType}* "
-          } else {
-            changesList = changesList + "| | *${formatedType}* "
-          }
-          prevType = pullType
-          firstAddonPR=false
-        }
-      } else {
-        changesList = changesList + "| | "
+      switch(pullType) {
+        case "enhancement":
+          enhancementList = enhancementList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
+          break
+        case "bug":
+          bugfixList = bugfixList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
+          break
+        case "newbinding":
+          newBindingList = newBindingList + " - ${pullBinding}\n"
+          break
       }
-      if (!skipPR) changesList = changesList + "| [#${pullNumber}](${pullURL}) | ${pullTitle} |\n"
+    }
+    def bugfixOnly = enhancementList.isEmpty()
+    enhancementList.eachLine { line, count ->
+      if (count == 0) {
+        changesList = changesList + "| | | | |\n"
+        changesList = changesList + "| **${prevBinding}** | *Enhancements* | ${line} |\n"
+      }
+      else changesList = changesList + "| | | ${line} |\n"
+    }
+    bugfixList.eachLine { line, count ->
+      if (count == 0) {
+        if (bugfixOnly) {
+          changesList = changesList + "| | | | |\n"
+          changesList = changesList + "| **${prevBinding}** | *Bug Fixes* | ${line} |\n"
+        }
+        else changesList = changesList + "| | *Bug Fixes* | ${line} |\n"
+      }
+      else changesList = changesList + "| | | ${line} |\n"
     }
   }
   def outputText = "### New Addons\n\n"
   outputText = outputText + "The following add-ons are newly introduced with the ${openHABMilestone} release:\n\n"
   outputText = outputText + "${newBindingList}\n"
 
-  outputText = outputText + "The following changes were done on existing addons:\n\n"
+  outputText = outputText + "The following changes were made on existing addons:\n\n"
   outputText = outputText + "${changesList}"
   stringsFile.text = outputText
 }
