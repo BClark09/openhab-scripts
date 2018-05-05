@@ -18,42 +18,42 @@ task buildChangelog {
       'name': "openhab-distro",
       'description': 'Distribution',
       'milestone': "${openHABMilestone}",
-      'newCatagory': true
+      'newCategory': true
     ],[
       'name': "openhab-core",
       'description': '2.x Core',
       'milestone': "${openHABMilestone}",
-      'newCatagory': true
+      'newCategory': true
     ],[
       'name': "openhab2-addons",
       'description': '2.x Addons',
       'milestone': "${openHABMilestone}",
-      'newCatagory': true
+      'newCategory': true
     ],[
       'name': "org.openhab.ui.habmin",
       'description': 'HABmin',
       'milestone': "${openHABMilestone}",
-      'newCatagory': false
+      'newCategory': false
     ],[
       'name': "org.openhab.ui.habpanel",
       'description': 'HABPanel',
       'milestone': "${openHABMilestone}",
-      'newCatagory': false
+      'newCategory': false
     ],[
       'name': "org.openhab.binding.zigbee",
       'description': 'Zigbee',
       'milestone': "${openHABMilestone}",
-      'newCatagory': false
+      'newCategory': false
     ],[
       'name': "org.openhab.binding.zwave",
       'description': 'ZWave',
       'milestone': "${openHABMilestone}",
-      'newCatagory': false
+      'newCategory': false
     ],[
       'name': "openhab1-addons",
       'description': '1.x Addons',
       'milestone': "${legacyMilestone}",
-      'newCatagory': true
+      'newCategory': true
     ]
   ]
 
@@ -62,9 +62,9 @@ task buildChangelog {
     def repoName = repo.name
     def milestone = repo.milestone
     def repoDesc = repo.description
-    def newCatagory = repo.newCatagory
+    def newCategory = repo.newCategory
 
-    if (newCatagory) {
+    if (newCategory) {
       changesList = changesList + "\n### ${repoDesc}\n\n"
         changesList = changesList + "| Binding | Type | Issue# | Change |\n"
         changesList = changesList + "|-|-|-|-|\n"
@@ -102,7 +102,7 @@ task buildChangelog {
         pullBinding = matcher.group(1)
         pullTitle = matcher.group(2)
       }
-      if (!newCatagory) pullBinding = repoDesc
+      if (!newCategory) pullBinding = repoDesc
 
       if (pullBinding.toLowerCase() != prevBinding.toLowerCase()) {
         def bugfixOnly = enhancementList.isEmpty()
