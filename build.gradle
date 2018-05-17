@@ -54,7 +54,22 @@ task buildChangelog {
       'description': '1.x Addons',
       'milestone': "${legacyMilestone}",
       'newCategory': true
-    ]
+    ]/*,[
+      'name': "smarthome-new",
+      'description': 'Eclipse Smarthome',
+      'milestone': '',
+      'newCategory': true
+    ],[
+      'name': "smarthome-bug",
+      'description': 'Eclipse Smarthome',
+      'milestone': '',
+      'newCategory': true
+    ],[
+      'name': "smarthome-enhancement",
+      'description': 'Eclipse Smarthome',
+      'milestone': '',
+      'newCategory': true
+    ]*/
   ]
 
   repos.each { repo ->
@@ -70,12 +85,44 @@ task buildChangelog {
         changesList = changesList + "|-|-|-|-|\n"
     }
 
-    def curlOutput = new ByteArrayOutputStream()
-    exec {
-      commandLine 'curl', "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr%20is:merged%20milestone:%22${milestone}%22&per_page=100"
-      standardOutput = curlOutput;
+    def curlURL = ""
+    def milestoneString = ""
+    def labelString = ""
+    def fromDate = "2018-01-05"
+    def toDate = "2018-04-28"
+    def mergedString = "%20merged:${fromDate}..${toDate}"
+    def defaultType = "enhancement"
+
+    switch(repoName) {
+      case("smarthome-new"):
+        orgName       = "eclipse"
+        repoName      = "smarthome"
+        labelString   = "%20label:%22New%20Contribution%22"
+        defaultType   = "newbinding"
+      break
+      case("smarthome-enhancement"):
+        orgName       = "eclipse"
+        repoName      = "smarthome"
+        labelString   = "%20label:%22enhancement%22"
+      break
+      case("smarthome-bug"):
+        orgName       = "eclipse"
+        repoName      = "smarthome"
+        labelString   = "%20label:%22bug%22"
+        defaultType   = "bug"
+      break
+      default:
+        milestoneString="%20milestone:%22${milestone}%22"
+        mergedString  = "%20is:merged"
+      break
     }
 
+    curlURL = "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr${mergedString}${milestoneString}${labelString}&per_page=100"
+    def curlOutput = new ByteArrayOutputStream()
+    exec {
+      commandLine 'curl', "${curlURL}"
+      standardOutput = curlOutput;
+    }
     def jsonSlurper = new JsonSlurper()
     def searchResults = jsonSlurper.parseText(curlOutput.toString())
     def pullRequests = searchResults.items
@@ -90,8 +137,13 @@ task buildChangelog {
       def pullAuthor =  pullRequest.user.login
       def pullNumber = pullRequest.number
       def pullURL = pullRequest.html_url
-      def pullType = pullRequest.labels[0]?.name
-      if (pullType == null) { pullType = "enhancement" }
+      def pullType = null
+
+      if(repoName!="smarthome") {
+        pullType = pullRequest.labels[0]?.name
+      }
+
+      if (pullType == null) { pullType = "${defaultType}" }
 
       def pullBinding = "Misc"
 
@@ -136,7 +188,8 @@ task buildChangelog {
           bugfixList = bugfixList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
           break
         case "newbinding":
-          newBindingList = newBindingList + " - ${pullBinding}\n"
+          def docsURL = "https://docs.openhab.org/addons/binding/${pullBinding}/readme.html"
+          newBindingList = newBindingList + " | [**${pullBinding}**](${docsURL}) | [#${pullNumber}](${pullURL}) |\n"
           break
       }
     }
@@ -161,6 +214,8 @@ task buildChangelog {
   }
   def outputText = "### New Addons\n\n"
   outputText = outputText + "The following add-ons are newly introduced with the ${openHABMilestone} release:\n\n"
+  outputText = outputText + "| Addon | Issue# |\n"
+  outputText = outputText + "|-|-|\n"
   outputText = outputText + "${newBindingList}\n"
 
   outputText = outputText + "The following changes were made on existing addons:\n\n"
