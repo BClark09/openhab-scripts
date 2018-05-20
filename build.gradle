@@ -54,7 +54,7 @@ task buildChangelog {
       'description': '1.x Addons',
       'milestone': "${legacyMilestone}",
       'newCategory': true
-    ]/*,[
+    ],[
       'name': "smarthome-new",
       'description': 'Eclipse Smarthome',
       'milestone': '',
@@ -69,7 +69,7 @@ task buildChangelog {
       'description': 'Eclipse Smarthome',
       'milestone': '',
       'newCategory': true
-    ]*/
+    ]
   ]
 
   repos.each { repo ->
@@ -88,8 +88,8 @@ task buildChangelog {
     def curlURL = ""
     def milestoneString = ""
     def labelString = ""
-    def fromDate = "2018-01-05"
-    def toDate = "2018-04-28"
+    def fromDate = "2017-12-07"
+    def toDate = "2018-05-20"
     def mergedString = "%20merged:${fromDate}..${toDate}"
     def defaultType = "enhancement"
 
@@ -122,6 +122,9 @@ task buildChangelog {
     exec {
       commandLine 'curl', "${curlURL}"
       standardOutput = curlOutput;
+    }
+    exec {
+      commandLine 'sleep', "10"
     }
     def jsonSlurper = new JsonSlurper()
     def searchResults = jsonSlurper.parseText(curlOutput.toString())
