@@ -1,4 +1,4 @@
-import groovy.json.JsonSlurper
+import groovy.json.*
 import java.util.regex.Pattern
 import java.util.regex.Matcher
 
@@ -7,11 +7,9 @@ task buildChangelog {
   def newBindingList = ""
   def stringsFile = new File("./build/changelog.md")
 
-  def pageNumber = 1
-
   def orgName = 'openhab'
-  def openHABMilestone = '2.3'
-  def legacyMilestone = '1.12.0'
+  def openHABMilestone = '2.4'
+  def legacyMilestone = '1.13.0'
 
   def repos = [
     [
@@ -56,17 +54,17 @@ task buildChangelog {
       'newCategory': true
     ],[
       'name': "smarthome-new",
-      'description': 'Eclipse Smarthome',
+      'description': 'Eclipse Smarthome (New Addons)',
       'milestone': '',
       'newCategory': true
     ],[
       'name': "smarthome-bug",
-      'description': 'Eclipse Smarthome',
+      'description': 'Eclipse Smarthome (Bug Fixes)',
       'milestone': '',
       'newCategory': true
     ],[
       'name': "smarthome-enhancement",
-      'description': 'Eclipse Smarthome',
+      'description': 'Eclipse Smarthome (Enhancements)',
       'milestone': '',
       'newCategory': true
     ]
@@ -88,8 +86,8 @@ task buildChangelog {
     def curlURL = ""
     def milestoneString = ""
     def labelString = ""
-    def fromDate = "2017-12-07"
-    def toDate = "2018-05-20"
+    def fromDate = "2018-05-20"
+    def toDate = "2018-12-08"
     def mergedString = "%20merged:${fromDate}..${toDate}"
     def defaultType = "enhancement"
 
@@ -116,19 +114,38 @@ task buildChangelog {
         mergedString  = "%20is:merged"
       break
     }
+    def pullRequests
+    def searchesLeft = 1
+    def pageNumber = 1
+    def pageString = ""
 
-    curlURL = "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr${mergedString}${milestoneString}${labelString}&per_page=100"
-    def curlOutput = new ByteArrayOutputStream()
-    exec {
-      commandLine 'curl', "${curlURL}"
-      standardOutput = curlOutput;
+    while (searchesLeft > 0) {
+      curlURL = "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr${mergedString}${milestoneString}${labelString}&per_page=100${pageString}"
+      print "Parsing: ${orgName}/${repoName} (Milestone ${milestone}, Page ${pageNumber}, "
+      def curlOutput = new ByteArrayOutputStream()
+      exec {
+        commandLine 'curl', "${curlURL}"
+        standardOutput = curlOutput
+        errorOutput = new ByteArrayOutputStream()
+      }
+      exec {
+        commandLine 'sleep', "10"
+      }
+      def jsonSlurper = new JsonSlurper()
+      def searchResults = jsonSlurper.parseText(curlOutput.toString())
+      pullRequests = (searchResults.items + pullRequests).findAll{ it != null }
+
+      if (pageString == "") {
+        def resultsFound = searchResults.total_count
+        println "Pull Requests Found: ${resultsFound})"
+        if (resultsFound > 100) {
+          searchesLeft = Math.ceil(resultsFound/100)
+        }
+      }
+      searchesLeft = searchesLeft - 1
+      pageNumber = pageNumber + 1
+      pageString = "&page=${pageNumber}"
     }
-    exec {
-      commandLine 'sleep', "10"
-    }
-    def jsonSlurper = new JsonSlurper()
-    def searchResults = jsonSlurper.parseText(curlOutput.toString())
-    def pullRequests = searchResults.items
     def sortedByName = pullRequests.sort { it.title.toLowerCase() }
     def prevBinding = ""
     def enhancementList = ""
@@ -146,8 +163,6 @@ task buildChangelog {
         pullType = pullRequest.labels[0]?.name
       }
 
-      if (pullType == null) { pullType = "${defaultType}" }
-
       def pullBinding = "Misc"
 
       Pattern pattern = Pattern.compile("\\[(.*?)\\](.*)")
@@ -157,43 +172,47 @@ task buildChangelog {
         pullBinding = matcher.group(1)
         pullTitle = matcher.group(2)
       }
-      if (!newCategory) pullBinding = repoDesc
 
-      if (pullBinding.toLowerCase() != prevBinding.toLowerCase()) {
-        def bugfixOnly = enhancementList.isEmpty()
-        enhancementList.eachLine { line, count ->
-          if (count == 0) {
-            changesList = changesList + "| | | | |\n"
-            changesList = changesList + "| **${prevBinding}** | *Enhancements* | ${line} |\n"
-          }
-          else changesList = changesList + "| | | ${line} |\n"
-        }
-        bugfixList.eachLine { line, count ->
-          if (count == 0) {
-            if (bugfixOnly) {
+      if (!(pullType == null && pullBinding == "Misc")) {
+        if (pullType == null) { pullType = "${defaultType}" }
+        if (!newCategory) pullBinding = repoDesc
+
+        if (pullBinding.toLowerCase() != prevBinding.toLowerCase()) {
+          def bugfixOnly = enhancementList.isEmpty()
+          enhancementList.eachLine { line, count ->
+            if (count == 0) {
               changesList = changesList + "| | | | |\n"
-              changesList = changesList + "| **${prevBinding}** | *Bug Fixes* | ${line} |\n"
+              changesList = changesList + "| **${prevBinding}** | *Enhancements* | ${line} |\n"
+            }
+            else changesList = changesList + "| | | ${line} |\n"
           }
-            else changesList = changesList + "| | *Bug Fixes* | ${line} |\n"
+          bugfixList.eachLine { line, count ->
+            if (count == 0) {
+              if (bugfixOnly) {
+                changesList = changesList + "| | | | |\n"
+                changesList = changesList + "| **${prevBinding}** | *Bug Fixes* | ${line} |\n"
+            }
+              else changesList = changesList + "| | *Bug Fixes* | ${line} |\n"
+            }
+            else changesList = changesList + "| | | ${line} |\n"
           }
-          else changesList = changesList + "| | | ${line} |\n"
+          prevBinding = pullBinding
+          bugfixList = ""
+          enhancementList = ""
         }
-        prevBinding = pullBinding
-        bugfixList = ""
-        enhancementList = ""
-      }
 
-      switch(pullType) {
-        case "enhancement":
-          enhancementList = enhancementList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
-          break
-        case "bug":
-          bugfixList = bugfixList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
-          break
-        case "newbinding":
-          def docsURL = "https://docs.openhab.org/addons/binding/${pullBinding}/readme.html"
-          newBindingList = newBindingList + " | [**${pullBinding}**](${docsURL}) | [#${pullNumber}](${pullURL}) |\n"
-          break
+        switch(pullType) {
+          case "enhancement":
+            enhancementList = enhancementList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
+            break
+          case "bug":
+            bugfixList = bugfixList + "[#${pullNumber}](${pullURL}) | ${pullTitle}\n"
+            break
+          case "newbinding":
+            def docsURL = "https://www.openhab.org/addons/bindings/${pullBinding}/"
+            newBindingList = newBindingList + " | [**${pullBinding}**](${docsURL}) | [#${pullNumber}](${pullURL}) |\n"
+            break
+        }
       }
     }
     def bugfixOnly = enhancementList.isEmpty()
@@ -214,6 +233,7 @@ task buildChangelog {
       }
       else changesList = changesList + "| | | ${line} |\n"
     }
+  
   }
   def outputText = "### New Addons\n\n"
   outputText = outputText + "The following add-ons are newly introduced with the ${openHABMilestone} release:\n\n"
