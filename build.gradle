@@ -10,7 +10,7 @@ task buildChangelog {
   def openHABMilestone = '2.4'
   def legacyMilestone = '1.13.0'
   def eclipseFromDate = "2018-05-20"
-  def eclipseToDate = "2018-12-08"
+  def eclipseToDate = "2018-12-15"
   def mergedString = "%20is:merged"
 
 
