@@ -6,10 +6,10 @@ task buildChangelog {
   def outputText = ""
   def stringsFile = new File("./build/changelog.md")
 
-  def openHABMilestone = "2.4"
-  def legacyMilestone = "1.13.0"
-  def eclipseFromDate = "2018-05-28"
-  def eclipseToDate = "2018-12-15"
+  def openHABMilestone = "2.5"
+  def legacyMilestone = "1.14.0"
+  def eclipseFromDate = "2018-12-16"
+  def eclipseToDate = "2019-12-15"
   def mergedString = "%20is:merged"
 
   def fullChangeList = []
@@ -35,6 +35,8 @@ task buildChangelog {
       "repos" : [
         [
           "name" : "openhab2-addons",
+        ],[
+          "name" : "openhab-webui",
         ],[
           "name" : "org.openhab.ui.habmin",
           "addonName" : "HABmin"
@@ -254,7 +256,7 @@ task buildChangelog {
       outputText = outputText + "| Type | Issue# | Change |\n"
       outputText = outputText + "|-|-|-|\n"
     } else {
-    outputText = outputText + "\n### 2.x ${categoryName}\n\n"
+    outputText = outputText + "\n### ${categoryName}\n\n"
     outputText = outputText + "| Add-on | Type | Issue# | Change |\n"
     outputText = outputText + "|-|-|-|-|\n"
     }
