@@ -169,6 +169,7 @@ task buildChangelog {
                   pullType = "new"
                   addonType = Matcher.lastMatcher[0][1].trim().capitalize()
                   if (addonType == "Contribution"){ addonType = "Binding" }
+                  if (addonType == "Transform") { addonType = "Transformation" } 
                   if ((addonType != "Voice") && (addonType != "Persistence")) {
                     addonTypeURL = (addonType + "s").toLowerCase()
                   } else {
