@@ -158,33 +158,38 @@ task buildChangelog {
                 pullType="enhancement"
                 break
               case ~/^new(.+)/:
-                def addonTypeURL
-                pullType = "new"
-                addonType = Matcher.lastMatcher[0][1].trim().capitalize()
-                if (addonType == "Contribution"){ addonType = "Binding" }
-                if ((addonType != "Voice") && (addonType != "Persistence")) {
-                  addonTypeURL = (addonType + "s").toLowerCase()
+                if (repoName == "openhab-core") {
+                  pullType="feature"
+                  pullAddon="core"
                 } else {
-                  addonTypeURL = addonType.toLowerCase()
-                }
-                docsURL = "https://www.openhab.org/addons/${addonTypeURL}/${pullAddon}/"
-                
-                def url = docsURL.toURL()
-                Pattern htmlPattern = Pattern.compile(".*<title>(.*) - .* \\| openHAB<\\/title>")
-                try {
-                  Matcher htmlMatcher = htmlPattern.matcher(url.text)
-                  if (htmlMatcher.find()) {
-                    pullAddon = htmlMatcher.group(1)
+                  def addonTypeURL
+                  pullType = "new"
+                  addonType = Matcher.lastMatcher[0][1].trim().capitalize()
+                  if (addonType == "Contribution"){ addonType = "Binding" }
+                  if ((addonType != "Voice") && (addonType != "Persistence")) {
+                    addonTypeURL = (addonType + "s").toLowerCase()
+                  } else {
+                    addonTypeURL = addonType.toLowerCase()
                   }
-                } catch (FileNotFoundException e) {
-                  println "  Warning: New contribution PR #${pullNumber} does not have a [name]..."
+                  docsURL = "https://www.openhab.org/addons/${addonTypeURL}/${pullAddon}/"
+                
+                  def url = docsURL.toURL()
+                  Pattern htmlPattern = Pattern.compile(".*<title>(.*) - .* \\| openHAB<\\/title>")
+                  try {
+                    Matcher htmlMatcher = htmlPattern.matcher(url.text)
+                    if (htmlMatcher.find()) {
+                      pullAddon = htmlMatcher.group(1)
+                    }
+                  } catch (FileNotFoundException e) {
+                    println "  Warning: New contribution PR #${pullNumber} does not have a [name]..."
+                  }
                 }
                 break
             }
           }
 
           // Try to sort the Eclipse/Smarthome Repo into other categories
-          if (((repoName == "smarthome") || (repoName == "openhab-core")) && ((pullType == "bug") || (pullType == "enhancement"))) {
+          if (((repoName == "smarthome") || (repoName == "openhab-core")) && ((pullType == "bug") || (pullType == "enhancement") || (pullType == "feature"))) {
             if ((pullAddon == "Misc") || (pullAddon.toLowerCase() == "core")) {
               pullCategory = "core"
               pullAddon = "Core"
@@ -284,6 +289,9 @@ task buildChangelog {
             break
           case "enhancement":
             typeText = "Enhancements"
+            break
+          case "feature":
+            typeText = "New Feature"
             break
         }
         typeText = "*" + "${typeText}" + "*"
