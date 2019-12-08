@@ -3,6 +3,9 @@ import java.util.regex.Pattern
 import java.util.regex.Matcher
 
 task buildChangelog {
+
+  mkdir 'build'
+
   def outputText = ""
   def stringsFile = new File("./build/changelog.md")
 
