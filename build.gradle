@@ -68,7 +68,7 @@ task buildChangelog {
         ]
       ]
     ],[
-      "name" : "Eclipse Smarthome",
+      "name" : "Eclipse SmartHome",
       "orgName" : "eclipse",
       "type" : "mixed",
       "milestone" : "",
@@ -191,7 +191,7 @@ task buildChangelog {
             }
           }
 
-          // Try to sort the Eclipse/Smarthome Repo into other categories
+          // Try to sort the Eclipse/SmartHome repo into other categories
           if (((repoName == "smarthome") || (repoName == "openhab-core")) && ((pullType == "bug") || (pullType == "enhancement") || (pullType == "feature"))) {
             if ((pullAddon == "Misc") || (pullAddon.toLowerCase() == "core")) {
               pullCategory = "core"
@@ -246,7 +246,7 @@ task buildChangelog {
   outputText = outputText + "## openHAB ${openHABMilestone} Changelog\n\n"
   outputText = outputText + "### New Add-ons\n\n"
   outputText = outputText + "The following add-ons are newly introduced with the ${openHABMilestone} release:\n\n"
-  outputText = outputText + "| Add-on | Type | Issue# |\n"
+  outputText = outputText + "| Add-on | Type | Issue |\n"
   outputText = outputText + "|-|-|-|\n"
 
   def sortedList = fullChangeList.findAll{it.type == "new"}.sort{it.addon.toLowerCase()}
@@ -257,15 +257,15 @@ task buildChangelog {
 
   outputText = outputText + "\nThe following improvements were also made:\n"
   
-  ["Core", "Add-ons", "Legacy Add-ons"].each {categoryName ->
+  ["Core", "2.x Add-ons", "1.x Legacy Add-ons"].each {categoryName ->
 
     if (categoryName == "Core") {
       outputText = outputText + "\n### Runtime\n\n"
-      outputText = outputText + "| Type | Issue# | Change |\n"
+      outputText = outputText + "| Type | Issue | Change |\n"
       outputText = outputText + "|-|-|-|\n"
     } else {
     outputText = outputText + "\n### ${categoryName}\n\n"
-    outputText = outputText + "| Add-on | Type | Issue# | Change |\n"
+    outputText = outputText + "| Add-on | Type | Issue | Change |\n"
     outputText = outputText + "|-|-|-|-|\n"
     }
     sortedList = fullChangeList.findAll{it.type != "new"}.findAll{it.category == "${categoryName.toLowerCase()}"}.sort{it.type}.reverse().sort{it.addon.toLowerCase()}
