@@ -32,7 +32,7 @@ task buildChangelog {
       ]
     ],[
       "name" : "2.x Add-ons",
-      "type" : "add-ons",
+      "type" : "2.x add-ons",
       "orgName" : "openhab",
       "milestone" : "${openHABMilestone}",
       "repos" : [
@@ -60,7 +60,7 @@ task buildChangelog {
     ],[
       "name" : "1.x Legacy Add-ons",
       "orgName" : "openhab",
-      "type" : "legacy add-ons",
+      "type" : "1.x legacy add-ons",
       "milestone" : "${legacyMilestone}",
       "repos" : [
         [
@@ -197,7 +197,7 @@ task buildChangelog {
               pullCategory = "core"
               pullAddon = "Core"
             } else {
-              pullCategory = "add-ons"
+              pullCategory = "2.x add-ons"
             }
           }
 
