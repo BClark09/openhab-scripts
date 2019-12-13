@@ -154,6 +154,10 @@ task buildChangelog {
               pullAddon = "Misc"
             }
 
+            if (repoName == "openhab-core"){
+              pullAddon = "Core"
+            }
+
             // Assign the pull request type (bug, enhancment etc)
             pullRequest.labels.each { label ->
               switch(label.name.toLowerCase())
@@ -167,7 +171,7 @@ task buildChangelog {
                 case ~/^new(.+)/:
                   if (repoName == "openhab-core") {
                     pullType="feature"
-                    pullAddon="core"
+                    pullAddon="Core"
                   } else {
                     def addonTypeURL
                     pullType = "new"
