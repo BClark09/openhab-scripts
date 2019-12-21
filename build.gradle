@@ -2,6 +2,7 @@ import groovy.json.*
 import java.util.regex.Pattern
 import java.util.regex.Matcher
 
+// Create a build directory first.
 task prepareDirs {
   doLast {
     mkdir 'build'
@@ -16,14 +17,15 @@ task buildChangelog {
     def outputText = ""
     def stringsFile = new File("./build/changelog.md")
 
-    def openHABMilestone = "2.5"
-    def legacyMilestone = "1.14.0"
-    def eclipseFromDate = "2018-12-16"
-    def eclipseToDate = "2019-12-15"
-    def mergedString = "%20is:merged"
+    def openHABMilestone = project.hasProperty('openhabMilestone') ? project.property('openhabMilestone') : System.env.OPENHAB_MILESTONE
+    def legacyMilestone = project.hasProperty('openhabLegacyMilestone') ? project.property('openhabLegacyMilestone') : System.env.OPENHAB_LEGACY_MILESTONE
+
+    openHABMilestone = openHABMilestone ?: "2.5"
+    legacyMilestone = legacyMilestone ?: "1.14.0"
 
     def fullChangeList = []
 
+    // Define a list of categories and the repositories to search in
     def categories = [
       [
         "type" : "core",
@@ -42,18 +44,9 @@ task buildChangelog {
         "milestone" : "${openHABMilestone}",
         "repos" : [
           [
-            "name" : "openhab2-addons",
+            "name" : "openhab-addons",
           ],[
             "name" : "openhab-webui",
-          ],[
-            "name" : "org.openhab.ui.habmin",
-            "addonName" : "HABmin"
-          ],[
-            "name" : "org.openhab.ui.habpanel",
-            "addonName" : "HABPanel"
-          ],[
-            "name" : "org.openhab.ui.habot",
-            "addonName" : "HABot"
           ],[
             "name" : "org.openhab.binding.zigbee",
             "addonName" : "Zigbee"
@@ -71,27 +64,10 @@ task buildChangelog {
             "name" : "openhab1-addons"
           ]
         ]
-      ],[
-        "name" : "Eclipse SmartHome",
-        "orgName" : "eclipse",
-        "type" : "mixed",
-        "milestone" : "",
-        "repos": [
-          [
-            "name" :"smarthome",
-            "label" : "%20label:%22New%20Contribution%22"
-          ],[
-            "name" :"smarthome",
-            "label" : "%20label:%22enhancement%22"
-          ],[
-            "name" :"smarthome",
-            "label" : "%20label:%22bug%22"
-          ]
-        ]
       ]
     ]
 
-
+    // Iterate through each category
     categories.each { category ->
 
       def pullRequests
@@ -100,6 +76,7 @@ task buildChangelog {
       if (milestone != "") {milestoneString = "%20milestone:%22${milestone}%22"}
       def orgName = category.orgName
 
+      // Iterate through each repository
       category.repos.each { repo ->
 
         def curlURL = ""
@@ -107,17 +84,13 @@ task buildChangelog {
         def repoName = repo.name
         def addonName = repo.addonName
 
-        if (repoName == "smarthome") {
-          mergedString = "%20merged:${eclipseFromDate}..${eclipseToDate}"
-          labelString = repo.label
-        }
-
         def searchesLeft = 1
         def pageNumber = 1
         def pageString = ""
 
+        // GitHub allows only 100 results at a time, so loop through multiple pages.
         while (searchesLeft > 0) {
-          curlURL = "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr${mergedString}${milestoneString}${labelString}&per_page=100${pageString}"
+          curlURL = "https://api.github.com/search/issues?q=repo:${orgName}/${repoName}%20is:pr%20is:merged${milestoneString}${labelString}&per_page=100${pageString}"
           print "Parsing: ${orgName}/${repoName} (Milestone ${milestone}, Page ${pageNumber}"
           def curlOutput = new ByteArrayOutputStream()
           exec {
@@ -125,6 +98,8 @@ task buildChangelog {
             standardOutput = curlOutput
             errorOutput = new ByteArrayOutputStream()
           }
+
+          // Wait a while to avoid hitting a rate limit.
           exec {
             commandLine "sleep", "10"
           }
@@ -141,24 +116,24 @@ task buildChangelog {
             def pullType = ""
             def addonType = ""
 
-            // Assign the addon name
-            Pattern pattern = Pattern.compile("\\[(.*?)\\](.*)")
-            Matcher matcher = pattern.matcher(pullTitle)
-
-            if (matcher.find()) {
-              pullAddon = matcher.group(1)
-              pullTitle = matcher.group(2)
-            } else if (repo.addonName) {
-              pullAddon = repo.addonName
+            // Assign the addon name, filter Core into its own category.
+            if (category.type == "core") {
+              addonName = "Core"
             } else {
-              pullAddon = "Misc"
+              Pattern pattern = Pattern.compile("\\[(.*?)\\](.*)")
+              Matcher matcher = pattern.matcher(pullTitle)
+
+              if (matcher.find()) {
+                pullAddon = matcher.group(1)
+                pullTitle = matcher.group(2)
+              } else if (repo.addonName) {
+                pullAddon = repo.addonName
+              } else {
+                pullAddon = "Misc"
+              }
             }
 
-            if (repoName == "openhab-core"){
-              pullAddon = "Core"
-            }
-
-            // Assign the pull request type (bug, enhancment etc)
+            // Assign the pull request type (bug, enhancement etc)
             pullRequest.labels.each { label ->
               switch(label.name.toLowerCase())
               {
@@ -171,8 +146,9 @@ task buildChangelog {
                 case ~/^new(.+)/:
                   if (repoName == "openhab-core") {
                     pullType="feature"
-                    pullAddon="Core"
                   } else {
+
+                    // New addons should have their correct name displayed with a link to documentation
                     def addonTypeURL
                     pullType = "new"
                     addonType = Matcher.lastMatcher[0][1].trim().capitalize()
@@ -185,6 +161,7 @@ task buildChangelog {
                     }
                     docsURL = "https://www.openhab.org/addons/${addonTypeURL}/${pullAddon}/"
 
+                    // Search the openHAB website for the addon's full name.
                     def url = docsURL.toURL()
                     Pattern htmlPattern = Pattern.compile(".*<title>(.*) - .* \\| openHAB<\\/title>")
                     try {
@@ -193,24 +170,14 @@ task buildChangelog {
                         pullAddon = htmlMatcher.group(1)
                       }
                     } catch (FileNotFoundException e) {
-                      println "  Warning: New contribution PR #${pullNumber} does not have a [name]..."
+                      println "  Warning: New contribution PR #${pullNumber} does not have a correct [name]..."
                     }
                   }
                   break
               }
             }
 
-            // Try to sort the Eclipse/SmartHome repo into other categories
-            if (((repoName == "smarthome") || (repoName == "openhab-core")) && ((pullType == "bug") || (pullType == "enhancement") || (pullType == "feature"))) {
-              if ((pullAddon == "Misc") || (pullAddon.toLowerCase() == "core")) {
-                pullCategory = "core"
-                pullAddon = "Core"
-              } else {
-                pullCategory = "2.x add-ons"
-              }
-            }
-
-            // Add PR to full changelog list
+            // Add PR to full changelog list to be formatted later
             if (pullType != "") {
             fullChangeList << [
               "category" : "${pullCategory}",
@@ -242,16 +209,7 @@ task buildChangelog {
       }
     }
 
-    // The following code can be used to save and restore previous grabs for debugging
-    /*
-    def changeFile = new File("./build/changeList.lst")
-    changeFile.text = new JsonBuilder(fullChangeList).toString()
-    */
-    /*
-    def changeFileText = new File("./build/changeList.lst").text
-    fullChangeList = new JsonSlurper().parseText(changeFileText)
-    */
-
+    // Format a MarkDown Changelog, new addons first
     outputText = outputText + "## openHAB ${openHABMilestone} Changelog\n\n"
     outputText = outputText + "### New Add-ons\n\n"
     outputText = outputText + "The following add-ons are newly introduced with the ${openHABMilestone} release:\n\n"
@@ -264,10 +222,13 @@ task buildChangelog {
       outputText = outputText + "| [**${it.addon}**](${it.docs}) | ${it.class} | [#${it.number}](${it.url}) |\n"
     }
 
+    // Iterate through the same categories as above for patches
     outputText = outputText + "\nThe following improvements were also made:\n"
+    categories.each{category ->
 
-    ["Core", "2.x Add-ons", "1.x Legacy Add-ons"].each {categoryName ->
+      def categoryName = category.type
 
+      // Format Core differently to addons
       if (categoryName == "Core") {
         outputText = outputText + "\n### Runtime\n\n"
         outputText = outputText + "| Type | Issue | Change |\n"
